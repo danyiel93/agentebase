@@ -1,11 +1,9 @@
 # Deploy no Azure — guia para alunos
 
 Este guia coloca **a sua própria cópia** do agente no ar, em um Azure Web
-App só seu, com deploy automático a cada `git push` via GitHub Actions.
-
-O workflow (`.github/workflows/deploy-azure.yml`) já existe no repositório.
-Ele não faz nada sozinho — precisa que você configure o Azure e os secrets
-do seu fork, nos passos abaixo.
+App só seu. O GitHub Actions chama o workflow de deploy após build, testes e
+evals passarem na `main`. Configure o Azure e os secrets do seu fork
+nos passos abaixo.
 
 ---
 
@@ -71,23 +69,25 @@ Guarde o arquivo — você vai colar o conteúdo dele no próximo passo.
 ## Passo 6 — Configurar secrets no seu fork
 
 No GitHub, no seu fork: **Settings → Secrets and variables → Actions → New
-repository secret**. Crie dois:
+repository secret**. Cadastre os segredos de deploy e da API.
 
 | Nome do secret | Valor |
 |---|---|
 | `AZURE_WEBAPP_NAME` | o nome que você deu ao Web App |
 | `AZURE_WEBAPP_PUBLISH_PROFILE` | conteúdo completo do arquivo baixado no passo 5 |
+| `OPENAI_API_KEY` | chave da API usada pelo smoke e pelos evals do CI |
 
 ## Passo 7 — Deploy
 
-Dê um `git push` na sua `main` (qualquer commit) ou vá na aba **Actions** do
-seu fork e rode o workflow **Deploy Azure** manualmente (`Run workflow`).
+Faça um `git push` na `main` ou abra **Actions → CI → Run workflow** e
+selecione a `main`. Após os testes e evals, o CI chama **Deploy Azure** e
+verifica `/_stcore/health` no app publicado. O
+[plano de testes](PLANO_TESTES.md) descreve a demonstração de falha controlada.
 
 ## Passo 8 — Acessar
 
-```
-https://<nome-do-seu-app>.azurewebsites.net
-```
+No portal do Azure, abra **Visão geral** e clique no **Domínio padrão** do
+Web App. A etapa de deploy também exibe a URL do aplicativo.
 
 ---
 
@@ -97,7 +97,7 @@ https://<nome-do-seu-app>.azurewebsites.net
 |---|---|
 | Tela em branco / erro genérico do Azure | Faltou configurar o Startup Command (passo 4) |
 | `OPENAI_API_KEY não encontrada` na tela do app | Faltou o Application Setting `OPENAI_API_KEY` (passo 3), ou o nome está escrito errado |
-| Deploy "pulado" com aviso nos logs da Action | Secrets `AZURE_WEBAPP_NAME`/`AZURE_WEBAPP_PUBLISH_PROFILE` não configurados no seu fork (passo 6) |
+| A validação de secrets falha no GitHub Actions | Confira os nomes e valores dos secrets no fork (passo 6) |
 | Deploy falha com `401 Unauthorized` na Action, ou o botão *Download publish profile* está desabilitado | Autenticação básica desligada no Web App (passo 5) |
 | Build falha nos logs do Azure, pacotes não encontrados | Faltou `SCM_DO_BUILD_DURING_DEPLOYMENT=true` (passo 3) |
 | Erro 401 dentro do app | Chave da OpenAI inválida ou expirada |

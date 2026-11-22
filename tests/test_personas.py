@@ -19,8 +19,8 @@ contra exemplos revisados por humano (o "teste de aceitação" que já está no
 slide da aula).
 
 Custa chamada de API de verdade e não é 100% determinístico — por isso tem
-o marker `eval`, separado até de `smoke`, e fica de fora do
-`pytest -m "not smoke and not eval"` do CI. Rodar manualmente com:
+o marker `eval`. No GitHub Actions, roda na `main` antes do deploy.
+Com a chave configurada, também roda localmente com:
 
     pytest -m eval -v
 

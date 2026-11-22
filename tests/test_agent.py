@@ -24,6 +24,7 @@ Rodar:  pytest -v
 import inspect
 import json
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -162,6 +163,36 @@ class TestCarregarContexto:
 
         assert "Você é um assistente." in contexto
 
+    def test_preserva_identidade_quando_memoria_nao_existe(self, tmp_path, monkeypatch):
+        identidade = tmp_path / "agent.md"
+        identidade.write_text("Identidade da persona", encoding="utf-8")
+        monkeypatch.setattr(agent, "AGENT_MD", identidade)
+        monkeypatch.setattr(agent, "MEMORY_MD", tmp_path / "sem-memoria.md")
+
+        assert agent.carregar_contexto() == "Identidade da persona\n\n---\n\n# Memória\n\n"
+
+
+@pytest.mark.unitario
+class TestGetCliente:
+    def test_pede_chave_quando_ausente(self, monkeypatch):
+        monkeypatch.setattr(agent, "_cliente", None)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+            agent.get_cliente()
+
+    def test_reutiliza_cliente_entre_chamadas(self, monkeypatch):
+        monkeypatch.setattr(agent, "_cliente", None)
+        monkeypatch.setenv("OPENAI_API_KEY", "chave-ficticia")
+        criar_cliente = Mock()
+        monkeypatch.setattr(agent, "OpenAI", criar_cliente)
+
+        cliente = agent.get_cliente()
+
+        assert cliente is criar_cliente.return_value
+        assert agent.get_cliente() is cliente
+        criar_cliente.assert_called_once_with(api_key="chave-ficticia")
+
 
 # ==========================================================================
 # 2. Contrato — a declaração em FERRAMENTAS bate com a função Python?
@@ -243,6 +274,27 @@ class TestResponderRunLevel:
         assert len(mensagens_tool) == 1
         assert mensagens_tool[0]["tool_call_id"] == "call_1"
         assert json.loads(mensagens_tool[0]["content"]) == {"resultado": 5}
+
+    def test_devolve_dois_resultados_na_ordem_das_chamadas(self, monkeypatch):
+        chamadas = [
+            _fake_tool_call("call_1", "somar", {"a": 4, "b": 6}),
+            _fake_tool_call("call_2", "somar", {"a": -7, "b": 2}),
+        ]
+        primeira = _fake_response(_fake_message(tool_calls=chamadas))
+        segunda = _fake_response(_fake_message(content="Os resultados são 10 e -5."))
+        cliente, contador = _fake_cliente([primeira, segunda])
+        monkeypatch.setattr(agent, "get_cliente", lambda: cliente)
+        mensagens = [{"role": "user", "content": "Calcule 4 + 6 e -7 + 2."}]
+
+        assert agent.responder(mensagens) == "Os resultados são 10 e -5."
+
+        resultados = [
+            (mensagem["tool_call_id"], json.loads(mensagem["content"]))
+            for mensagem in mensagens
+            if mensagem["role"] == "tool"
+        ]
+        assert resultados == [("call_1", {"resultado": 10}), ("call_2", {"resultado": -5})]
+        assert contador.call_count == 2
 
     def test_ferramenta_com_argumentos_invalidos_nao_derruba_o_loop(self, monkeypatch):
         # JSON de argumentos quebrado -> agent.py cai no except json.JSONDecodeError
