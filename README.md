@@ -149,8 +149,7 @@ Para você saber o que falta quando precisar:
 - **Streaming** — a resposta aparece de uma vez
 - **Troca de provedor** — está preso à OpenAI; isolar em `chamar_modelo()` é o primeiro passo para mudar isso
 - **Persistência** — nada é salvo entre execuções, exceto o `memory.md`
-- **Testes** — nenhum
-- **Autenticação, logs, custos** — nada disso
+- **Autenticação e acompanhamento de custos**
 
 Tudo isso é infraestrutura em volta das ~35 linhas do `responder()`. O loop não
 muda.
@@ -160,5 +159,6 @@ muda.
 ## 8. Deploy (para alunos testarem)
 
 Cada aluno pode fazer fork deste repositório e ter sua própria instância no
-ar, com deploy automático via GitHub Actions a cada `git push`. Passo a
-passo completo em [`DEPLOY_AZURE.md`](DEPLOY_AZURE.md).
+ar. O CI publica na `main` após build, testes e evals aprovados,
+com checagem de saúde do Streamlit após a publicação. Veja o
+[guia de deploy](DEPLOY_AZURE.md) e o [plano de testes e prompts](PLANO_TESTES.md).

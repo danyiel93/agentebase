@@ -1,20 +1,6 @@
-"""Smoke test com a API da OpenAI de verdade — o único teste deste projeto
-que gasta chamada real e não é 100% determinístico.
+"""Smoke com a API real. No CI, roda na main antes dos evals e do deploy."""
 
-Por isso ele:
-  - fica isolado num arquivo separado dos testes unitários/run-level;
-  - só roda se OPENAI_API_KEY estiver configurada (senão, skip — nunca falha
-    o CI de quem não tem a chave);
-  - tem o marker `smoke`, então o CI de todo PR roda com `pytest -m "not
-    smoke"` e ignora este arquivo. Rode manualmente com:
-
-        pytest -m smoke -v
-
-Serve para pegar o que um mock nunca vai pegar: mudança de modelo, chave
-revogada, mudança no formato da resposta da API, etc. — coisas de
-integração de verdade, não de lógica do agente.
-"""
-
+import json
 import os
 
 import pytest
@@ -39,3 +25,7 @@ def test_agente_soma_de_verdade_via_ferramenta():
     resposta = agent.responder(mensagens)
 
     assert "6912" in resposta
+    assert any(
+        mensagem["role"] == "tool" and json.loads(mensagem["content"]) == {"resultado": 6912}
+        for mensagem in mensagens
+    )
